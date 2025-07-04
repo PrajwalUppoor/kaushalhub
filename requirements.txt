@@ -1,0 +1,6 @@
+streamlit
+bcrypt
+sqlalchemy
+python-dotenv
+pytest
+pytest-cov

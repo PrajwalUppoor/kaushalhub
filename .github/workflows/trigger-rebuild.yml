@@ -1,0 +1,31 @@
+name: Trigger Safe Rebuild
+
+on:
+  push:
+    branches:
+      - main  # Trigger only when push happens to main
+
+jobs:
+  rebuild-flag:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Git config
+      run: |
+        git config --global user.name "KaushalHub Bot"
+        git config --global user.email "noreply@kaushalhub.in"
+
+    - name: Create rebuild.flag with message
+      run: |
+        echo "🔄 Rebuild triggered from main branch push at $(date -u +'%Y-%m-%d %H:%M:%S UTC')" > rebuild.flag
+
+    - name: Commit and push rebuild flag
+      run: |
+        git add rebuild.flag
+        git commit -m "🔁 Auto-trigger rebuild from GitHub Action"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
