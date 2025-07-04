@@ -3,29 +3,56 @@ name: Trigger Safe Rebuild
 on:
   push:
     branches:
-      - main  # Trigger only when push happens to main
+      - main
 
 jobs:
-  rebuild-flag:
+  test-and-rebuild:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up Git config
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+
+    - name: Run Unit Tests
+      id: test
+      run: |
+        pytest tests/
+
+    - name: Send Discord alert on failure
+      if: failure()
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      run: |
+        curl -H "Content-Type: application/json" \
+             -X POST \
+             -d "{\"content\": \"❌ Unit tests failed on push to \`${{ github.ref_name }}\` by \`${{ github.actor }}\`. Please fix before deploy.\"}" \
+             $DISCORD_WEBHOOK
+
+    - name: Set up Git
+      if: success()
       run: |
         git config --global user.name "KaushalHub Bot"
         git config --global user.email "noreply@kaushalhub.in"
 
-    - name: Create rebuild.flag with message
+    - name: Create rebuild.flag
+      if: success()
       run: |
-        echo "🔄 Rebuild triggered from main branch push at $(date -u +'%Y-%m-%d %H:%M:%S UTC')" > rebuild.flag
+        echo "🔄 Auto rebuild from main on success - $(date)" > rebuild.flag
 
-    - name: Commit and push rebuild flag
+    - name: Commit rebuild.flag
+      if: success()
       run: |
         git add rebuild.flag
-        git commit -m "🔁 Auto-trigger rebuild from GitHub Action"
+        git commit -m "🔁 Auto rebuild on passing tests"
         git push
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
